@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,12 +11,30 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
-import { createStaff } from "./members.functions";
 
 export const Route = createFileRoute("/_authenticated/members")({
   head: () => ({ meta: [{ title: "Thành viên — Việc Nhóm" }] }),
   component: Members,
 });
+
+function createTempAuthClient() {
+  const url =
+    import.meta.env.VITE_SUPABASE_URL ||
+    (typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined) ||
+    "https://lwefkdlaxtpnwapklldz.supabase.co";
+  const key =
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    (typeof process !== "undefined" ? process.env.SUPABASE_PUBLISHABLE_KEY : undefined) ||
+    "sb_publishable_K5GGf7snKW2hYF-yfnbgFQ_1BTwz127";
+
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
 
 function AddStaffDialog({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
@@ -24,17 +43,42 @@ function AddStaffDialog({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState("");
 
   const add = useMutation({
-    mutationFn: () =>
-      createStaff({ data: { email, password, fullName } }),
-    onSuccess: () => {
-      toast.success("Đã thêm nhân viên mới!");
+    mutationFn: async () => {
+      const tempClient = createTempAuthClient();
+      const { data, error } = await tempClient.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { full_name: fullName.trim() },
+        },
+      });
+
+      if (error) {
+        if (error.message.toLowerCase().includes("already registered")) {
+          throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác.");
+        }
+        throw error;
+      }
+
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác.");
+      }
+
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.session) {
+        toast.success("Đã thêm nhân viên mới! Tài khoản có thể đăng nhập ngay.");
+      } else {
+        toast.success("Đã tạo tài khoản nhân viên! (Nếu Supabase bật xác nhận email, cần kiểm tra hộp thư)");
+      }
       setOpen(false);
       setFullName("");
       setEmail("");
       setPassword("");
       onSuccess();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || "Không thể tạo tài khoản nhân viên"),
   });
 
   return (
@@ -49,7 +93,7 @@ function AddStaffDialog({ onSuccess }: { onSuccess: () => void }) {
         <DialogHeader>
           <DialogTitle>Thêm nhân viên mới</DialogTitle>
           <DialogDescription>
-            Tạo tài khoản nhân viên mới. Họ có thể đăng nhập ngay bằng thông tin bên dưới.
+            Tạo tài khoản nhân viên mới. Tài khoản sau khi tạo sẽ có vai trò là Nhân viên.
           </DialogDescription>
         </DialogHeader>
         <form
