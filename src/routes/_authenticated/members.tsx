@@ -21,11 +21,11 @@ function createTempAuthClient() {
   const url =
     import.meta.env.VITE_SUPABASE_URL ||
     (typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined) ||
-    "https://lwefkdlaxtpnwapklldz.supabase.co";
+    "https://ajzfkqvjwuttkfipmvtd.supabase.co";
   const key =
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     (typeof process !== "undefined" ? process.env.SUPABASE_PUBLISHABLE_KEY : undefined) ||
-    "sb_publishable_K5GGf7snKW2hYF-yfnbgFQ_1BTwz127";
+    "sb_publishable_bcHgAqYxh-0k7o-ZzXc6nQ_eL2EwHws";
 
   return createClient(url, key, {
     auth: {
