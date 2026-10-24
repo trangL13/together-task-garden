@@ -79,8 +79,8 @@ export function TaskFormDialog({ task, trigger }: { task?: Task; trigger: ReactN
           className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!title.trim()) return toast.error("Vui lòng nhập tiêu đề");
-            save.mutate();
+            if (!title.trim()) toast.error("Vui lòng nhập tiêu đề");
+            else save.mutate();
           }}
         >
           <div className="space-y-1.5">
